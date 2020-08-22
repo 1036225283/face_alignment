@@ -167,3 +167,29 @@ def test_dataset():
 
 
 # test_dataset()
+
+def mean_face():
+    font_size = 16
+    font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
+    helen = HellenDataset(True, 224)
+    data_loader = DataLoader(dataset=helen, batch_size=1, shuffle=True)
+    transform = tfs.Compose([tfs.ToPILImage()])
+    mean_face = torch.zeros(3, 224, 224)
+    mean_shape = torch.zeros(194, 2)
+    for i_batch, sample_batched in enumerate(data_loader):
+        mean_face += sample_batched[0][0]
+        mean_shape += sample_batched[1][0]
+    mean_face /= len(helen)
+    mean_shape /= len(helen)
+    fig = plt.figure(num=2, figsize=(15, 8), dpi=80)  # 开启一个窗口，同时设置大小，分辨率
+    square_img = transform(mean_face)
+    square_img.save("data/mean_face.jpg")
+    draw_ann(square_img, mean_shape.numpy().tolist(), font1, font_size)
+    square_img.save("data/mean_face_and_shape.jpg")
+    np.savetxt("data/mean_shape", mean_shape.numpy())
+    plt.imshow(square_img)
+    plt.show()
+    plt.close()
+
+
+mean_face()
