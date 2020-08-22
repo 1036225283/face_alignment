@@ -1,8 +1,6 @@
 import os
 import torch
-import torchvision
 from torchvision import transforms as tfs
-from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from PIL import Image, ImageDraw, ImageFont
@@ -128,8 +126,10 @@ class HellenDataset(Dataset):
         self.is_train = is_train
         if is_train:
             self.file_path = cfg.path+cfg.train_txt
+            self.pic_path = cfg.path+"train/"
         else:
             self.file_path = cfg.path + cfg.test_txt
+            self.pic_path = cfg.path + "test/"
         self.annotations = read_all_annotation(cfg.path + cfg.annotation)
         self.files = []
         for line in open(self.file_path):
@@ -145,7 +145,7 @@ class HellenDataset(Dataset):
 
     def __getitem__(self, item):
         file_name = self.files[item]
-        img = Image.open(cfg.path + "train/" + file_name)
+        img = Image.open(self.pic_path + file_name)
         ann = self.annotations[file_name.replace(".jpg", "")]
         sub_image, new_ann = crop_face_area(img, ann)
         square_img, square_ann = pic_resize2square(sub_image, self.size, new_ann)
@@ -192,4 +192,29 @@ def mean_face():
     plt.close()
 
 
-mean_face()
+class DataPrefetcher():
+    def __init__(self, loader):
+        self.loader = iter(loader)
+        self.stream = torch.cuda.Stream()
+        self.preload()
+
+    def preload(self):
+        try:
+            self.next_input, self.next_target = next(self.loader)
+        except StopIteration:
+            self.next_input = None
+            self.next_target = None
+            return
+        with torch.cuda.stream(self.stream):
+            self.next_input = self.next_input.cuda(non_blocking=True)
+            self.next_target = self.next_target.cuda(non_blocking=True)
+
+    def next(self):
+        torch.cuda.current_stream().wait_stream(self.stream)
+        input = self.next_input
+        target = self.next_target
+        self.preload()
+        return input, target
+
+if __name__=='__main__':
+    mean_face()
