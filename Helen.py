@@ -1,14 +1,18 @@
 import os
 import torch
 import torchvision
+from torchvision import transforms as tfs
 from torchvision import datasets, transforms, models
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from PIL import Image, ImageDraw, ImageFont
 import Config as cfg
 import random
+import math
+import numpy as np
+import matplotlib.pyplot as plt
 
-def get_max_box(ann, size):
+def get_max_box(ann, size, need_random=True, rand_range=20):
     min_x = 100000
     max_x = 0
     min_y = 100000
@@ -22,10 +26,11 @@ def get_max_box(ann, size):
             min_y = i[1]
         if i[1] > max_y:
             max_y = i[1]
-    min_x -= random.randint(0, 20)
-    min_y -= random.randint(0, 20)
-    max_x += random.randint(0, 20)
-    max_y += random.randint(0, 20)
+    if need_random:
+        min_x -= random.randint(0, rand_range)
+        min_y -= random.randint(0, rand_range)
+        max_x += random.randint(0, rand_range)
+        max_y += random.randint(0, rand_range)
     if max_x > size[0]:
         max_x = size[0]
     if max_y > size[1]:
@@ -46,36 +51,80 @@ def read_all_annotation(path):
                 sx, sy = point.split(',')
                 x = float(sx)
                 y = float(sy)
-                points.append((x, y))
+                points.append([x, y])
     return annotation
 
+def bias_ann(ann, bias):
+    for point in ann:
+        point[0] = point[0] - bias[0]
+        point[1] = point[1] - bias[1]
 
-annotations = read_all_annotation(cfg.path + cfg.annotation)
-font_size = 16
-font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
+def crop_face_area(img, ann, need_random=True, rand_range=20):
+    area = get_max_box(ann, img.size, need_random, rand_range)
+    sub_img = img.crop(area)
+    bias_ann(ann, (area[0], area[1]))
+    return sub_img, ann
 
-for key in annotations:
-    img = Image.open(cfg.path + "train/" + key + ".jpg")
-    width = img.size[0]
-    height = img.size[1]
-    ann = annotations[key]
-    face_area = get_max_box(ann)
-    print(face_area)
-    img = img.crop(face_area)
 
-    # draw = ImageDraw.Draw(img)
-    # draw.point(ann,  fill=(255, 0, 0))
-    # for i in range(194):
-    #     center_x = ann[i][0] - font_size/2
-    #     center_y = ann[i][1] - font_size/2
-    #     draw.text((center_x, center_y), str(i), fill=(0, 255, 0), font=font1)
-    img.show()
-    break
+def pic_resize2square(img, des_size, ann, is_random=True):
+    rows = img.height
+    cols = img.width
+    scale_rate = float(0)
+
+    new_rows = des_size
+    new_cols = des_size
+    rand_x = 0
+    rand_y = 0
+
+    if rows > cols:
+        scale_rate = des_size / rows
+        new_cols = math.ceil(cols * scale_rate)
+        # print(rows, cols, new_rows, new_cols, scale_rate)
+        if is_random:
+            rand_x = random.randint(0, math.floor(des_size - new_cols))
+        else:
+            rand_x = int(math.floor((des_size - new_cols) / 2))
+
+    elif cols > rows:
+        scale_rate = des_size / cols
+        new_rows = math.ceil(rows * scale_rate)
+        # print(rows, cols, new_rows, new_cols, scale_rate)
+        if is_random:
+            rand_y = random.randint(0, math.floor(des_size - new_rows))
+        else:
+            rand_y = int(math.floor((des_size - new_rows) / 2))
+
+    new_img = img.resize((new_cols, new_rows))
+
+    scaled_img = Image.new("RGB", (des_size, des_size))
+    scaled_img.paste(new_img, box=(rand_x, rand_y))
+
+    new_ann = []
+    for point in ann:
+        new_point = []
+        for i in range(len(point)):
+            new_point.append(point[i] * scale_rate)
+        new_point[0] += rand_x
+        new_point[1] += rand_y
+        new_ann.append(new_point)
+
+    return scaled_img, new_ann
+
+def draw_ann(img, ann, font, font_size):
+    draw = ImageDraw.Draw(img)
+    new_ann = []
+    for p in ann:
+        new_ann.append(tuple(p))
+    draw.point(tuple(new_ann),  fill=(255, 0, 0))
+    for i in range(194):
+        center_x = ann[i][0] - font_size/2
+        center_y = ann[i][1] - font_size/2
+        draw.text((center_x, center_y), str(i), fill=(0, 255, 0), font=font)
+
 
 class HellenDataset(Dataset):
-    def __init__(self, is_train, width, height):
-        self.width = width
-        self.height = height
+    def __init__(self, is_train, size):
+        self.size = size
         self.is_train = is_train
         if is_train:
             self.file_path = cfg.path+cfg.train_txt
@@ -83,8 +132,13 @@ class HellenDataset(Dataset):
             self.file_path = cfg.path + cfg.test_txt
         self.annotations = read_all_annotation(cfg.path + cfg.annotation)
         self.files = []
-        with open(self.file_path) as f:
-            self.files.append(f.readline())
+        for line in open(self.file_path):
+            self.files.append(line.replace('\n', ''))
+        self.pic_strong = tfs.Compose([
+            tfs.ColorJitter(0.5, 0.3, 0.3, 0.1),
+            tfs.ToTensor()
+        ])
+        self.annotations = read_all_annotation(cfg.path + cfg.annotation)
 
     def __len__(self):
         return len(self.files)
@@ -92,9 +146,24 @@ class HellenDataset(Dataset):
     def __getitem__(self, item):
         file_name = self.files[item]
         img = Image.open(cfg.path + "train/" + file_name)
-        ann = annotations[file_name.replace(".jpg", "")]
-        face_area = get_max_box(ann, img.size)
-        img = img.crop(face_area)
+        ann = self.annotations[file_name.replace(".jpg", "")]
+        sub_image, new_ann = crop_face_area(img, ann)
+        square_img, square_ann = pic_resize2square(sub_image, self.size, new_ann)
+        return self.pic_strong(square_img), torch.from_numpy(np.array(square_ann))
 
 
+def test_dataset():
+    font_size = 16
+    font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
+    data_loader = DataLoader(dataset=HellenDataset(True, 224), batch_size=1, shuffle=True)
+    transform = tfs.Compose([tfs.ToPILImage()])
+    for i_batch, sample_batched in enumerate(data_loader):
+        fig = plt.figure(num=1, figsize=(15, 8), dpi=80)  # 开启一个窗口，同时设置大小，分辨率
+        square_img = transform(sample_batched[0][0])
+        draw_ann(square_img, sample_batched[1][0].numpy().tolist(), font1, font_size)
+        plt.imshow(square_img)
+        plt.show()
+        plt.close()
 
+
+# test_dataset()
