@@ -10,7 +10,7 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-def get_max_box(ann, size, need_random=True, rand_range=20):
+def get_max_box(ann, size, need_random=True, rand_radio=0.3):
     min_x = 100000
     max_x = 0
     min_y = 100000
@@ -24,11 +24,13 @@ def get_max_box(ann, size, need_random=True, rand_range=20):
             min_y = i[1]
         if i[1] > max_y:
             max_y = i[1]
+    face_height = max_y - min_y
+    random_range = int(face_height * rand_radio)
     if need_random:
-        min_x -= random.randint(0, rand_range)
-        min_y -= random.randint(0, rand_range)
-        max_x += random.randint(0, rand_range)
-        max_y += random.randint(0, rand_range)
+        min_x -= random.randint(0, random_range)
+        min_y -= random.randint(0, random_range)
+        max_x += random.randint(0, random_range)
+        max_y += random.randint(0, random_range)
     if max_x > size[0]:
         max_x = size[0]
     if max_y > size[1]:
@@ -57,8 +59,8 @@ def bias_ann(ann, bias):
         point[0] = point[0] - bias[0]
         point[1] = point[1] - bias[1]
 
-def crop_face_area(img, ann, need_random=True, rand_range=20):
-    area = get_max_box(ann, img.size, need_random, rand_range)
+def crop_face_area(img, ann, need_random=True, rand_ratio=0.3):
+    area = get_max_box(ann, img.size, need_random, rand_ratio)
     sub_img = img.crop(area)
     bias_ann(ann, (area[0], area[1]))
     return sub_img, ann
@@ -147,9 +149,9 @@ class HellenDataset(Dataset):
         file_name = self.files[item]
         img = Image.open(self.pic_path + file_name)
         ann = self.annotations[file_name.replace(".jpg", "")]
-        sub_image, new_ann = crop_face_area(img, ann)
+        sub_image, new_ann = crop_face_area(img, ann, rand_ratio=0.5)
         square_img, square_ann = pic_resize2square(sub_image, self.size, new_ann)
-        return self.pic_strong(square_img), torch.from_numpy(np.array(square_ann))
+        return self.pic_strong(square_img), torch.from_numpy(np.array(square_ann)).float()
 
 
 def test_dataset():

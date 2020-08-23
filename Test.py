@@ -10,9 +10,9 @@ import numpy as np
 import time
 
 
-MODEL_SAVE_PATH = "./output/face_align210.pt"
+MODEL_FACE_ALIGN  = "./output/face_align1450.pt"
 
-font_size = 12
+font_size = 4
 font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
 
 
@@ -20,7 +20,7 @@ def test():
     data_loader = DataLoader(dataset=HellenDataset(False, 224), batch_size=1, shuffle=True, num_workers=1)
     device = torch.device("cpu")
     model = CnnAlign().to(device)
-    state = torch.load(MODEL_SAVE_PATH)
+    state = torch.load(MODEL_FACE_ALIGN)
     model.load_state_dict(state['net'])
     to_pil_img = tfs.ToPILImage()
 

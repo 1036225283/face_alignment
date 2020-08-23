@@ -52,7 +52,6 @@ def train(args):
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)
     scheduler = StepLR(optimizer, step_size=args.step, gamma=args.gama)
     train_loss = 0
-    loss_func = torch.nn.L1Loss().to(device)
     to_pil_img = tfs.ToPILImage()
     to_tensor = tfs.ToTensor()
 
@@ -68,7 +67,7 @@ def train(args):
             last_img_tensor = img_tensor
             last_label_tensor = label_tensor
             output = model(img_tensor)
-            loss = loss_func(output, label_tensor.view(-1, output.size(1)))
+            loss = torch.nn.functional.smooth_l1_loss(output, label_tensor.view(-1, output.size(1)))
             if loss is None:
                 img_tensor, label_tensor = prefetcher.next()
                 continue

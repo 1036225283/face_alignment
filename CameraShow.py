@@ -7,9 +7,9 @@ from Helen import draw_ann
 import PIL.ImageFont as ImageFont
 from torchvision import transforms as tfs
 
-MODEL_FACE_ALIGN  = "./data/face_align.pt"
+MODEL_FACE_ALIGN  = "./output/face_align.pt"
 
-font_size = 12
+font_size = 4
 font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
 
 
@@ -25,7 +25,7 @@ def get_pytorch_model(path):
     use_cuda = torch.cuda.is_available()
     device = torch.device("cpu")
     model = CnnAlign().to(device)
-    state = torch.load(path)
+    state = torch.load(path, map_location='cpu')
     model.load_state_dict(state['net'])
     return model
 
