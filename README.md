@@ -12,8 +12,9 @@ CnnAlignHard is a better model for face alignment,so use XXXHard.py
 #### dataset
 I trained the model(data/face_align_hard.pt) on helen dataset:  
 [helen dataset](http://www.ifp.illinois.edu/~vuongle2/helen/)
-so: if you want train on helen datset, please download the helen dataset   
-and change you own helen's path in Config.py  
+if you want to train your own model on helen datset, please download the helen dataset   
+and change you own helen dataset's path in Config.py.  
+so:  
 * you need download annatations and Train/Test images.
 * write all train/test images file name to train.txt/test.txt file:  
 ***cd Train***
@@ -22,7 +23,7 @@ and change you own helen's path in Config.py
 ***cd Test***  
 ***ls > test.txt***  
 ***mv test.txt***   
-The dataset directory like this:
+The dataset directory like this:  
 ![dataset](https://github.com/sunnythree/face_alignment/blob/master/data/dic.png)  
 #### train  
 ```
