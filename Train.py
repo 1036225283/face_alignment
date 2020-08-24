@@ -17,7 +17,7 @@ import time
 
 MODEL_SAVE_PATH = "./output/face_align.pt"
 
-font_size = 12
+font_size = 4
 font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
 
 def parse_args():

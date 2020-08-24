@@ -10,7 +10,7 @@ import numpy as np
 import time
 
 
-MODEL_FACE_ALIGN  = "./output/face_align1450.pt"
+MODEL_FACE_ALIGN  = "./data/face_align.pt"
 
 font_size = 4
 font1 = ImageFont.truetype(r'./Ubuntu-B.ttf', font_size)
@@ -23,7 +23,7 @@ def test():
     state = torch.load(MODEL_FACE_ALIGN)
     model.load_state_dict(state['net'])
     to_pil_img = tfs.ToPILImage()
-
+    model.eval()
     for img, label in data_loader:
         start = time.time()
         output = model(img)
