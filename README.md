@@ -1,5 +1,5 @@
 # face_align
-this is a project for: Full convolution face alignment
+this is a project for: Full convolution face alignment  
 show:
 ![pic1](https://github.com/sunnythree/face_alignment/blob/master/data/t1.png)
 ![pic2](https://github.com/sunnythree/face_alignment/blob/master/data/t2.png)
