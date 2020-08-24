@@ -17,8 +17,8 @@ and change you own helen dataset's path in Config.py.
 so:  
 * you need download annatations and Train/Test images.
 * write all train/test images file name to train.txt/test.txt file:  
-***cd Train***
-***ls > train.txt***  
+***cd Train***  
+***ls > train.txt***   
 ***mv train.txt ..***    
 ***cd Test***  
 ***ls > test.txt***  
